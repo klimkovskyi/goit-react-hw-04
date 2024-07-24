@@ -1,50 +1,76 @@
 import { useEffect, useState } from "react";
-import ContactForm from "./components/ContactForm/ContactForm";
-import ContactList from "./components/ContactList/ContactList";
-import contactsData from "./contacts.json";
-import SearchBox from "./components/SearchBox/SearchBox";
+import ImageGallery from "./components/ImageGallery/ImageGallery";
+import SearchBar from "./components/SearchBar/SearchBar";
+import { fetchImage } from "./services/api";
+import { Toaster } from "react-hot-toast";
+import Loader from "./components/Loader/Loader";
+import ErrorMessage from "./components/ErrorMessage/ErrorMessage";
+import LoadMoreBtn from "./components/LoadMoreBtn/LoadMoreBtn";
+import ImageModal from "./components/ImageModal/ImageModal";
 
 function App() {
-  const getInitialContacts = () => {
-    const savedContacts = window.localStorage.getItem("savedContacts");
-    return savedContacts?.length ? JSON.parse(savedContacts) : contactsData;
-  };
-
-  const [contacts, setContacts] = useState(getInitialContacts);
-  const [inputValue, setInputValue] = useState("");
-
-  const handleDeleteContact = id => {
-    setContacts(contacts => contacts.filter(contact => contact.id !== id));
-  };
-
-  const handleChangeInput = e => {
-    setInputValue(e.target.value);
-  };
-
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(inputValue.toLowerCase())
-  );
-
-  const handleAddContact = newContact => {
-    setContacts(prev => [...prev, newContact]);
-  };
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPage, setTotalPage] = useState(0);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState("");
 
   useEffect(() => {
-    window.localStorage.setItem("savedContacts", JSON.stringify(contacts));
-  }, [contacts]);
+    if (!query) return;
+    const getImage = async () => {
+      try {
+        setIsLoading(true);
+        setError(false);
+        const response = await fetchImage(query, page, 9);
+        setImages(prev => [...prev, ...response.results]);
+        setTotalPage(response.total_pages);
+      } catch (error) {
+        console.log(error);
+        setError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    getImage();
+  }, [query, page]);
+
+  const handleLoadMore = () => {
+    setPage(prev => prev + 1);
+  };
+
+  const handleSetQuery = query => {
+    setQuery(query);
+    setImages([]);
+    setPage(1);
+  };
+
+  const handleImageClick = image => {
+    setModalIsOpen(true);
+    setSelectedImage(image);
+  };
+
+  const handleCloseModal = () => {
+    setModalIsOpen(false);
+  };
 
   return (
     <>
       <div>
-        <h1 style={{ textAlign: "center", color: "teal" }}>Phonebook</h1>
-        <ContactForm onAdd={handleAddContact} />
-        <SearchBox
-          handleChangeInput={handleChangeInput}
-          inputValue={inputValue}
-        />
-        <ContactList
-          contacts={filteredContacts}
-          handleDeleteContact={handleDeleteContact}
+        <SearchBar onSubmit={handleSetQuery} />
+        <Toaster />
+        {isLoading && <Loader />}
+        {error && <ErrorMessage />}
+        <ImageGallery items={images} onImageClick={handleImageClick} />
+        {page < totalPage && !isLoading && images.length && (
+          <LoadMoreBtn onClick={handleLoadMore} />
+        )}
+        <ImageModal
+          modalIsOpen={modalIsOpen}
+          closeModal={handleCloseModal}
+          image={selectedImage}
         />
       </div>
     </>
