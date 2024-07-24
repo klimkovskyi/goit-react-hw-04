@@ -61,12 +61,12 @@ function App() {
       <div>
         <SearchBar onSubmit={handleSetQuery} />
         <Toaster />
-        {isLoading && <Loader />}
-        {error && <ErrorMessage />}
         <ImageGallery items={images} onImageClick={handleImageClick} />
+        {error && <ErrorMessage />}
         {page < totalPage && !isLoading && images.length && (
           <LoadMoreBtn onClick={handleLoadMore} />
         )}
+        {isLoading && <Loader />}
         <ImageModal
           modalIsOpen={modalIsOpen}
           closeModal={handleCloseModal}
